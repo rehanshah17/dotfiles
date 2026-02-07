@@ -23,19 +23,19 @@ $character\
 [palettes.terminal]
 # Auto-managed from `~/.config/kitty/theme.conf` by `~/.config/starship/update-palette`.
 # --- palette:auto start ---
-foreground = '#c4c8c5'
-background = '#1d1f21'
-current_line = '#363a41'
-primary = '#000000'
-box = '#363a41'
-blue = '#80a1bd'
-cyan = '#8abdb6'
-green = '#b5bd68'
-orange = '#f0c574'
-pink = '#b294ba'
-purple = '#b294ba'
-red = '#cc6666'
-yellow = '#f0c574'
+foreground = '#b7bcb9'
+background = '#161718'
+current_line = '#393b3b'
+primary = '#2a2e33'
+box = '#393b3b'
+blue = '#6d90b0'
+cyan = '#7fbeb3'
+green = '#b3be5a'
+orange = '#e5894f'
+pink = '#6e4f79'
+purple = '#a07eab'
+red = '#b74d50'
+yellow = '#e3b55e'
 # --- palette:auto end ---
 
 [fill]
