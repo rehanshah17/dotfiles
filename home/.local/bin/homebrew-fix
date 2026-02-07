@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Homebrew permission fix (run in your normal Terminal, not Codex)."
+echo
+echo "1) Fix ownership so brew can install:"
+echo "   sudo chown -R $(whoami):admin /opt/homebrew"
+echo "   sudo chown -R $(whoami):admin /opt/homebrew/Caskroom"
+echo
+echo "2) Ensure write permission:"
+echo "   sudo chmod -R u+w /opt/homebrew"
+echo
+echo "3) (If prompted by brew doctor) reinstall Command Line Tools:"
+echo "   xcode-select --install"
+echo
+echo "4) Re-check:"
+echo "   brew doctor"
+echo
+echo "5) Then install QoL CLI tools:"
+echo "   brew install fd bat eza git-delta direnv"
+echo
+echo "Note: jq is already present at /usr/bin/jq; ripgrep is already available as rg."
+

@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import os
+import shutil
+import sys
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+
+
+EXCLUDE_NAMES = {".DS_Store", ".localized"}
+
+
+@dataclass(frozen=True)
+class Result:
+    moved: int
+    skipped: int
+    collisions: int
+
+
+def unique_dest(dest: Path) -> tuple[Path, bool]:
+    """Return a destination path that won't collide; bool indicates collision happened."""
+    if not dest.exists():
+        return dest, False
+
+    stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    base = dest.stem
+    suffix = dest.suffix
+    parent = dest.parent
+
+    for i in range(1, 10_000):
+        candidate = parent / f"{base}-{stamp}-{i}{suffix}"
+        if not candidate.exists():
+            return candidate, True
+
+    raise RuntimeError(f"Unable to find non-colliding name for {dest}")
+
+
+def move_item(src: Path, dst_dir: Path) -> tuple[bool, bool]:
+    dest, collided = unique_dest(dst_dir / src.name)
+    shutil.move(str(src), str(dest))
+    return True, collided
+
+
+def main() -> int:
+    home = Path.home()
+    downloads = home / "Downloads"
+    inbox = home / "Inbox" / "Downloads"
+
+    if not downloads.is_dir():
+        print(f"Missing folder: {downloads}", file=sys.stderr)
+        return 2
+    inbox.mkdir(parents=True, exist_ok=True)
+
+    items = sorted(downloads.iterdir(), key=lambda p: p.name.lower())
+    to_move = [p for p in items if p.name not in EXCLUDE_NAMES]
+
+    moved = 0
+    skipped = 0
+    collisions = 0
+
+    # If user passes a numeric limit, only move that many (for safe batching).
+    limit = None
+    if len(sys.argv) == 2:
+        try:
+            limit = int(sys.argv[1])
+        except ValueError:
+            print("usage: move-downloads-to-inbox [limit]", file=sys.stderr)
+            return 2
+        if limit <= 0:
+            print("limit must be > 0", file=sys.stderr)
+            return 2
+
+    for src in to_move:
+        if limit is not None and moved >= limit:
+            skipped += 1
+            continue
+
+        try:
+            _, collided = move_item(src, inbox)
+            moved += 1
+            if collided:
+                collisions += 1
+        except Exception as e:
+            print(f"Failed to move {src}: {e}", file=sys.stderr)
+            skipped += 1
+
+    result = Result(moved=moved, skipped=skipped, collisions=collisions)
+    print(f"Moved: {result.moved}, skipped: {result.skipped}, collisions: {result.collisions}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

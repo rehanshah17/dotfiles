@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+KITTY_DIR="${HOME}/.config/kitty"
+THEMES_DIR="${KITTY_DIR}/themes"
+THEME_CONF="${KITTY_DIR}/theme.conf"
+CURRENT_FILE="${KITTY_DIR}/.current_theme"
+PREVIEW_PY="${KITTY_DIR}/theme_preview.py"
+
+theme_rows() {
+  # display<TAB>filename
+  cat <<'EOF'
+Ayu	ayu.conf
+Brogrammer	Brogrammer.conf
+Chalk	Chalk.conf
+Darkside	Darkside.conf
+Flatland	Flatland.conf
+Gruvbox Dark	gruvbox_dark.conf
+Hybrid	Hybrid.conf
+Japanesque	Japanesque.conf
+Spiderman	Spiderman.conf
+Tango Dark	Tango_Dark.conf
+Tomorrow Night	Tomorrow_Night.conf
+EOF
+}
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf is required. Install with: brew install fzf" >&2
+  exit 1
+fi
+
+mkdir -p "${THEMES_DIR}"
+
+if [ "${1:-}" = "--install-themes" ]; then
+  echo "Installing selected themes into ${THEMES_DIR}..." >&2
+  repo_dir="${KITTY_DIR}/kitty-themes"
+  if [ ! -d "${repo_dir}/themes" ]; then
+    echo "Missing ${repo_dir}/themes. Clone dexpota/kitty-themes into ${repo_dir} first." >&2
+    exit 1
+  fi
+  while IFS=$'\t' read -r _display filename; do
+    [ -z "${filename}" ] && continue
+    if [ -f "${repo_dir}/themes/${filename}" ]; then
+      cp -f "${repo_dir}/themes/${filename}" "${THEMES_DIR}/${filename}"
+    fi
+  done < <(theme_rows)
+  echo "Done." >&2
+  exit 0
+fi
+
+if [ ! -d "${THEMES_DIR}" ] || [ -z "$(ls -A "${THEMES_DIR}" 2>/dev/null || true)" ]; then
+  echo "No themes found in ${THEMES_DIR}." >&2
+  echo "If you cloned dexpota/kitty-themes into ~/.config/kitty/kitty-themes, run:" >&2
+  echo "  ~/.config/kitty/kitty-theme --install-themes" >&2
+  exit 1
+fi
+
+current_file="$(cat "${CURRENT_FILE}" 2>/dev/null || true)"
+current_name="$(
+  if [ -n "${current_file}" ]; then
+    theme_rows | awk -F'\t' -v f="${current_file}" '$2 == f { print $1; exit }'
+  fi
+)"
+
+rows="$(
+  while IFS=$'\t' read -r display filename; do
+    [ -z "${display}" ] && continue
+    [ -z "${filename}" ] && continue
+    [ -f "${THEMES_DIR}/${filename}" ] || continue
+    printf '%s\t%s\n' "${display}" "${filename}"
+  done < <(theme_rows)
+)"
+
+selected="$(
+  printf '%s\n' "${rows}" | \
+    fzf --height=90% --border --prompt="Kitty theme> " \
+      --delimiter=$'\t' --with-nth=1 \
+      --header="Enter=apply  Esc=cancel   (current: ${current_name:-none})" \
+      --preview-window="right,60%,border-left" \
+      --preview="python3 '${PREVIEW_PY}' '${THEMES_DIR}/{2}' 2>/dev/null || (echo 'No preview')"
+)"
+
+if [ -z "${selected}" ]; then
+  exit 0
+fi
+
+selected_name="$(printf '%s' "${selected}" | awk -F$'\\t' '{print $1}')"
+selected_file="$(printf '%s' "${selected}" | awk -F$'\\t' '{print $2}')"
+
+src="${THEMES_DIR}/${selected_file}"
+tmp="${THEME_CONF}.tmp"
+
+cp -f "${src}" "${tmp}"
+mv -f "${tmp}" "${THEME_CONF}"
+printf '%s\n' "${selected_file}" > "${CURRENT_FILE}"
+
+if command -v kitty >/dev/null 2>&1; then
+  kitty @ set-colors -a -c "${THEME_CONF}" >/dev/null 2>&1 || true
+fi
+
+if [ -x "${HOME}/.config/starship/update-palette" ]; then
+  "${HOME}/.config/starship/update-palette" >/dev/null 2>&1 || true
+fi
+
+echo "Applied theme: ${selected_name}"

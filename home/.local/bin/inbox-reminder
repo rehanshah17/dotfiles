@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+inbox="${HOME}/Inbox/Downloads"
+
+msg="Inbox hygiene: process a few items in Inbox/Downloads"
+
+# Notification (best-effort, robust quoting)
+/usr/bin/osascript - "${msg}" <<'APPLESCRIPT'
+on run argv
+  set theMsg to item 1 of argv
+  display notification theMsg with title "Inbox"
+end run
+APPLESCRIPT
+
+# Optional: also open the folder in Finder
+if [ "${1:-}" = "--open" ]; then
+  /usr/bin/open "${inbox}"
+fi

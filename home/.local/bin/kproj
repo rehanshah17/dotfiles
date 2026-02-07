@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf is required. Install with: brew install fzf" >&2
+  exit 1
+fi
+
+pick_dir() {
+  if command -v zoxide >/dev/null 2>&1; then
+    zoxide query -l 2>/dev/null | fzf --prompt="Project dir> " --height=80% --border
+    return
+  fi
+
+  base="${HOME}/Projects"
+  if [ -d "${base}" ]; then
+    find "${base}" -mindepth 1 -maxdepth 2 -type d 2>/dev/null | sed "s#^${HOME}/##" | \
+      fzf --prompt="Project dir> " --height=80% --border | \
+      awk -v h="${HOME}/" '{print h $0}'
+    return
+  fi
+
+  echo "${PWD}"
+}
+
+dir="$(pick_dir || true)"
+if [ -z "${dir}" ]; then
+  exit 0
+fi
+
+if command -v kitty >/dev/null 2>&1; then
+  if kitty @ ls >/dev/null 2>&1; then
+    exec kitty @ launch --type=tab --cwd "${dir}"
+  fi
+  exec kitty --directory "${dir}"
+fi
+
+exec open -a kitty
+

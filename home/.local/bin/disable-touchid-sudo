@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+file="/etc/pam.d/sudo"
+
+echo "This will remove Touch ID sudo line from ${file} (if present)."
+echo "You will be prompted for your macOS password."
+echo
+
+sudo /usr/bin/grep -v -E '^[[:space:]]*auth[[:space:]]+sufficient[[:space:]]+pam_tid\\.so[[:space:]]*$' "${file}" | \
+  sudo /usr/bin/tee "${file}.tmp" >/dev/null
+
+sudo /bin/mv "${file}.tmp" "${file}"
+echo "Done."
+

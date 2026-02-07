@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+file="/etc/pam.d/sudo"
+line="auth       sufficient     pam_tid.so"
+
+if [ ! -f "${file}" ]; then
+  echo "Missing ${file}" >&2
+  exit 1
+fi
+
+echo "This will enable Touch ID for sudo by inserting:"
+echo "  ${line}"
+echo "at the top of ${file}"
+echo
+echo "You will be prompted for your macOS password."
+echo
+
+sudo /usr/bin/awk -v l="${line}" '
+  BEGIN { inserted=0 }
+  NR==1 { print l; inserted=1 }
+  { print }
+  END { if (!inserted) print l }
+' "${file}" | sudo /usr/bin/tee "${file}.tmp" >/dev/null
+
+sudo /bin/mv "${file}.tmp" "${file}"
+echo "Done. Test with: sudo -v"
+

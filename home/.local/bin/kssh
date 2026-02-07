@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf is required. Install with: brew install fzf" >&2
+  exit 1
+fi
+
+cfg="${HOME}/.ssh/config"
+if [ ! -f "${cfg}" ]; then
+  echo "Missing ${cfg}" >&2
+  exit 1
+fi
+
+hosts="$(
+  awk '
+    tolower($1)=="host" {
+      for (i=2;i<=NF;i++) {
+        h=$i
+        if (h ~ /[*?]/) continue
+        if (h == "!") continue
+        print h
+      }
+    }
+  ' "${cfg}" | sort -u
+)"
+
+host="$(printf '%s\n' "${hosts}" | fzf --prompt="SSH host> " --height=80% --border)"
+if [ -z "${host}" ]; then
+  exit 0
+fi
+
+cmd=(ssh "${host}")
+if [ "${#@}" -gt 0 ]; then
+  cmd+=( "$@" )
+fi
+
+if command -v kitty >/dev/null 2>&1; then
+  if kitty @ ls >/dev/null 2>&1; then
+    exec kitty @ launch --type=tab --cwd "${HOME}" -- "${cmd[@]}"
+  fi
+  exec kitty -- "${cmd[@]}"
+fi
+
+exec "${cmd[@]}"
+

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Lightweight "default terminal" entrypoint.
+# Useful for Raycast / scripts: `term` opens Kitty in the current directory.
+
+cwd="${PWD}"
+
+if command -v kitty >/dev/null 2>&1; then
+  # Open a new Kitty OS window rooted at cwd.
+  exec kitty --directory "${cwd}"
+fi
+
+exec open -a kitty
+

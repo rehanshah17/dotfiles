@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INBOX_DL="${HOME}/Inbox/Downloads"
+INBOX_TS="${HOME}/Inbox/ToSort"
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf is required. Install with: brew install fzf" >&2
+  exit 1
+fi
+
+if [ ! -d "${INBOX_DL}" ]; then
+  echo "Missing: ${INBOX_DL}" >&2
+  exit 1
+fi
+
+choose_dest() {
+  local year
+  year="$(date +%Y)"
+
+  local choices
+  choices="$(cat <<EOF
+Projects	${HOME}/Projects
+Areas/School	${HOME}/Areas/School
+Areas/Admin	${HOME}/Areas/Admin
+Resources/Reference	${HOME}/Resources/Reference
+Archive/${year}	${HOME}/Archive/${year}
+Inbox/ToSort	${INBOX_TS}
+EOF
+)"
+
+  printf '%s\n' "${choices}" | fzf --delimiter=$'\t' --with-nth=1 --prompt="Move to> " --height=70% --border | awk -F$'\t' '{print $2}'
+}
+
+dest="${1:-}"
+if [ -z "${dest}" ]; then
+  dest="$(choose_dest || true)"
+fi
+
+if [ -z "${dest}" ]; then
+  exit 0
+fi
+
+mkdir -p "${dest}"
+
+selected="$(
+  find "${INBOX_DL}" -maxdepth 1 -mindepth 1 -print | \
+    fzf --multi --prompt="Select items> " --height=80% --border \
+      --preview='ls -lah {} 2>/dev/null | sed -n "1,10p"'
+)"
+
+if [ -z "${selected}" ]; then
+  exit 0
+fi
+
+while IFS= read -r src; do
+  [ -z "${src}" ] && continue
+  mv -n "${src}" "${dest}/" || true
+done <<< "${selected}"
+
+echo "Moved to: ${dest}"
+

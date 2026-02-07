@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo="${HOME}/terminal-dotfiles"
+dst="${repo}/home"
+
+mkdir -p "${dst}"
+
+if [ ! -d "${repo}/.git" ] && command -v git >/dev/null 2>&1; then
+  (cd "${repo}" && git init -q)
+fi
+
+mkdir -p "${dst}/.config"
+mkdir -p "${dst}/.local/bin"
+mkdir -p "${dst}/Library/LaunchAgents"
+mkdir -p "${dst}/Library/Application Support/com.raycast.macos/script-commands"
+
+copy_file() {
+  local src="$1"
+  local rel="$2"
+  if [ -f "${src}" ]; then
+    mkdir -p "$(dirname "${dst}/${rel}")"
+    cp -f "${src}" "${dst}/${rel}"
+  fi
+}
+
+copy_dir() {
+  local src="$1"
+  local rel="$2"
+  if [ -d "${src}" ]; then
+    mkdir -p "${dst}/${rel}"
+    rsync -a --delete \
+      --delete-excluded \
+      --exclude 'kitty-themes/' \
+      --exclude '__pycache__/' \
+      --exclude '*.pyc' \
+      --exclude '.DS_Store' \
+      "${src}/" "${dst}/${rel}/"
+  fi
+}
+
+copy_file "${HOME}/.zshrc" ".zshrc"
+copy_file "${HOME}/.tmux.conf" ".tmux.conf"
+copy_file "${HOME}/.ssh/config" ".ssh/config"
+copy_dir  "${HOME}/.config/kitty" ".config/kitty"
+copy_dir  "${HOME}/.config/ghostty" ".config/ghostty"
+copy_file "${HOME}/.config/starship.toml" ".config/starship.toml"
+copy_file "${HOME}/.config/neofetch/config.conf" ".config/neofetch/config.conf"
+copy_file "${HOME}/.config/fastfetch/config.jsonc" ".config/fastfetch/config.jsonc"
+
+# Local helper scripts
+copy_file "${HOME}/.local/bin/term" ".local/bin/term"
+copy_file "${HOME}/.local/bin/kproj" ".local/bin/kproj"
+copy_file "${HOME}/.local/bin/kssh" ".local/bin/kssh"
+copy_file "${HOME}/.local/bin/klog" ".local/bin/klog"
+copy_file "${HOME}/.local/bin/kitty-theme" ".local/bin/kitty-theme"
+copy_file "${HOME}/.local/bin/ghostty-theme" ".local/bin/ghostty-theme"
+copy_file "${HOME}/.local/bin/dotfiles-snapshot" ".local/bin/dotfiles-snapshot"
+copy_file "${HOME}/.local/bin/move-downloads-to-inbox" ".local/bin/move-downloads-to-inbox"
+copy_file "${HOME}/.local/bin/inbox-mv" ".local/bin/inbox-mv"
+copy_file "${HOME}/.local/bin/inbox-reminder" ".local/bin/inbox-reminder"
+copy_file "${HOME}/.local/bin/homebrew-fix" ".local/bin/homebrew-fix"
+copy_file "${HOME}/.local/bin/enable-touchid-sudo" ".local/bin/enable-touchid-sudo"
+copy_file "${HOME}/.local/bin/disable-touchid-sudo" ".local/bin/disable-touchid-sudo"
+
+# LaunchAgents + Raycast script commands
+copy_file "${HOME}/Library/LaunchAgents/com.rehan.inbox-reminder.plist" "Library/LaunchAgents/com.rehan.inbox-reminder.plist"
+copy_dir "${HOME}/Library/Application Support/com.raycast.macos/script-commands" "Library/Application Support/com.raycast.macos/script-commands"
+
+cat > "${repo}/README.md" <<'EOF'
+# terminal-dotfiles
+
+Personal snapshot of terminal configs.
+
+- Run `dots` (alias) / `~/.local/bin/dotfiles-snapshot` to refresh files.
+- Add a remote and commit/push whenever you want:
+  - `git add -A`
+  - `git commit -m "Update configs"`
+  - `git push`
+EOF
+
+cat > "${repo}/.gitignore" <<'EOF'
+.DS_Store
+home/.config/kitty/kitty-themes/
+home/.config/**/.DS_Store
+EOF
+
+if [ -d "${repo}/.git" ]; then
+  (cd "${repo}" && git add -A >/dev/null 2>&1 || true)
+  echo "Updated ${repo} (staged; not committed)."
+else
+  echo "Updated ${repo}."
+fi

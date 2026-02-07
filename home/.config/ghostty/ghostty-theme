@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GHOSTTY_DIR="${HOME}/.config/ghostty"
+GHOSTTY_CONFIG="${GHOSTTY_DIR}/config"
+THEMES_DIR="${GHOSTTY_DIR}/themes"
+PREVIEW_PY="${GHOSTTY_DIR}/theme_preview.py"
+CONVERT_PY="${GHOSTTY_DIR}/kitty_to_ghostty.py"
+
+KITTY_THEMES_DIR="${HOME}/.config/kitty/themes"
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf is required. Install with: brew install fzf" >&2
+  exit 1
+fi
+
+theme_rows() {
+  # display<TAB>ghostty_theme<TAB>kitty_file
+  cat <<'EOF'
+Ayu	ayu	ayu.conf
+Brogrammer	brogrammer	Brogrammer.conf
+Chalk	chalk	Chalk.conf
+Darkside	darkside	Darkside.conf
+Flatland	flatland	Flatland.conf
+Gruvbox Dark	gruvbox-dark	gruvbox_dark.conf
+Hybrid	hybrid	Hybrid.conf
+Japanesque	japanesque	Japanesque.conf
+Spiderman	spiderman	Spiderman.conf
+Tango Dark	tango-dark	Tango_Dark.conf
+Tomorrow Night	tomorrow-night	Tomorrow_Night.conf
+EOF
+}
+
+install_themes() {
+  mkdir -p "${THEMES_DIR}"
+
+  if [ ! -d "${KITTY_THEMES_DIR}" ]; then
+    echo "Missing ${KITTY_THEMES_DIR}. Install Kitty themes first." >&2
+    exit 1
+  fi
+
+  while IFS=$'\t' read -r _display ghostty_name kitty_file; do
+    [ -z "${ghostty_name}" ] && continue
+    [ -z "${kitty_file}" ] && continue
+    src="${KITTY_THEMES_DIR}/${kitty_file}"
+    dst="${THEMES_DIR}/${ghostty_name}"
+    [ -f "${src}" ] || continue
+    python3 "${CONVERT_PY}" "${src}" "${dst}" >/dev/null
+  done < <(theme_rows)
+}
+
+if [ "${1:-}" = "--install-themes" ]; then
+  install_themes
+  echo "Installed Ghostty themes into ${THEMES_DIR}" >&2
+  exit 0
+fi
+
+install_themes
+
+current="$(rg -n '^theme\\s*=\\s*' -m 1 "${GHOSTTY_CONFIG}" 2>/dev/null | sed -E 's/^.*=\\s*//' || true)"
+
+rows="$(
+  while IFS=$'\t' read -r display ghostty_name _kitty_file; do
+    [ -z "${display}" ] && continue
+    [ -z "${ghostty_name}" ] && continue
+    [ -f "${THEMES_DIR}/${ghostty_name}" ] || continue
+    printf '%s\t%s\n' "${display}" "${ghostty_name}"
+  done < <(theme_rows)
+)"
+
+selected="$(
+  printf '%s\n' "${rows}" | \
+    fzf --height=90% --border --prompt="Ghostty theme> " \
+      --delimiter=$'\t' --with-nth=1 \
+      --header="Enter=apply  Esc=cancel   (current: ${current:-none})" \
+      --preview-window="right,60%,border-left" \
+      --preview="python3 '${PREVIEW_PY}' '${THEMES_DIR}/{2}' 2>/dev/null || (echo 'No preview')"
+)"
+
+if [ -z "${selected}" ]; then
+  exit 0
+fi
+
+selected_name="$(printf '%s' "${selected}" | awk -F$'\\t' '{print $1}')"
+selected_theme="$(printf '%s' "${selected}" | awk -F$'\\t' '{print $2}')"
+
+backup="${GHOSTTY_CONFIG}.bak.$(date +%Y%m%d%H%M%S)"
+cp -a "${GHOSTTY_CONFIG}" "${backup}"
+
+if rg -n '^theme\\s*=' -q "${GHOSTTY_CONFIG}"; then
+  # Replace first theme line
+  perl -0777 -i -pe "s/^theme\\s*=.*\\n/theme = ${selected_theme}\\n/m" "${GHOSTTY_CONFIG}"
+else
+  printf '\n%s\n' "theme = ${selected_theme}" >> "${GHOSTTY_CONFIG}"
+fi
+
+echo "Applied Ghostty theme: ${selected_name}"
+echo "Config updated: ${GHOSTTY_CONFIG}"
+
+if [ -x "${HOME}/.config/starship/update-palette" ]; then
+  "${HOME}/.config/starship/update-palette" --from "${THEMES_DIR}/${selected_theme}" >/dev/null 2>&1 || true
+fi

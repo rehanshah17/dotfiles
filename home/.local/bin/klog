@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf is required. Install with: brew install fzf" >&2
+  exit 1
+fi
+
+root="${1:-${HOME}}"
+if [ -f "${root}" ]; then
+  file="${root}"
+else
+  if [ ! -d "${root}" ]; then
+    echo "Not found: ${root}" >&2
+    exit 1
+  fi
+  file="$(
+    find "${root}" -type f 2>/dev/null | \
+      fzf --prompt="Log file> " --height=80% --border \
+        --preview='tail -n 200 {} 2>/dev/null | sed -n "1,200p"'
+  )"
+fi
+
+if [ -z "${file}" ]; then
+  exit 0
+fi
+
+cmd=(bash -lc "tail -n 200 -F \"$file\"")
+
+if command -v kitty >/dev/null 2>&1; then
+  if kitty @ ls >/dev/null 2>&1; then
+    exec kitty @ launch --type=tab --cwd "${PWD}" -- "${cmd[@]}"
+  fi
+  exec kitty -- "${cmd[@]}"
+fi
+
+exec "${cmd[@]}"
+
