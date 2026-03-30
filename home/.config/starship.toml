@@ -1,115 +1,105 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
-palette = "terminal"
-add_newline = true
+# Clean, text-first prompt optimized for Chalk theme
+add_newline = false
+palette = "chalk"
+format = "$username$directory${custom.py_env_status}$git_branch$git_status$jobs$cmd_duration$character"
 
-format = """
-[╭](fg:current_line)\
-$os\
-$directory\
-$git_branch\
-$git_status\
-$fill\
-$nodejs\
-$bun\
-$deno\
-$aws\
-$cmd_duration\
-$shell\
-$line_break\
-$character\
-"""
+[palettes.chalk]
+text = "#e0e0e0"
+subtle = "#969896"
+ok = "#b5bd68"
+warn = "#f0c674"
+err = "#cc6666"
+accent = "#81a2be"
+git = "#de935f"
 
-[palettes.terminal]
-# Auto-managed from `~/.config/kitty/theme.conf` by `~/.config/starship/update-palette`.
-# --- palette:auto start ---
-foreground = '#b7bcb9'
-background = '#161718'
-current_line = '#393b3b'
-primary = '#2a2e33'
-box = '#393b3b'
-blue = '#6d90b0'
-cyan = '#7fbeb3'
-green = '#b3be5a'
-orange = '#e5894f'
-pink = '#6e4f79'
-purple = '#a07eab'
-red = '#b74d50'
-yellow = '#e3b55e'
-# --- palette:auto end ---
-
-[fill]
-symbol = "─"
-style = "fg:current_line"
-
-[os]
-format = "(fg:current_line)[](fg:red)[$symbol ](fg:primary bg:red)[](fg:red)"
-disabled = false
-
-[os.symbols]
-Macos = ""
-Unknown = ""
+[username]
+show_always = true
+format = "[$user ]($style)"
+style_user = "bold fg:accent"
+style_root = "bold fg:err"
 
 [directory]
-format = "[─](fg:current_line)[](fg:pink)[󰷏 ](fg:primary bg:pink)[](fg:pink bg:box)[ $read_only$truncation_symbol$path](fg:foreground bg:box)[](fg:box)"
-home_symbol = " ~/"
-truncation_symbol = " "
-truncation_length = 2
+truncation_length = 3
 truncate_to_repo = true
-read_only = "󱧵 "
-read_only_style = ""
+home_symbol = "~"
+read_only = " [ro]"
+read_only_style = "fg:warn"
+style = "bold fg:text"
+format = "[$path]($style)[$read_only]($read_only_style) "
+
+[custom.py_env_status]
+when = """ [ -n "$VIRTUAL_ENV" ] || [ -n "$CONDA_DEFAULT_ENV" ] """
+shell = ["sh"]
+command = """
+if [ -n "$VIRTUAL_ENV" ]; then
+  name="$(basename "$VIRTUAL_ENV")"
+  short="$(printf "%.12s" "$name")"
+  if [ ${#name} -gt 12 ]; then short="${short}+"; fi
+  printf "%s" "$short"
+elif [ -n "$CONDA_DEFAULT_ENV" ]; then
+  name="$CONDA_DEFAULT_ENV"
+  short="$(printf "%.12s" "$name")"
+  if [ ${#name} -gt 12 ]; then short="${short}+"; fi
+  printf "%s" "$short"
+fi
+"""
+format = "[\\[$output\\] ]($style)"
+style = "bold fg:accent"
 
 [git_branch]
-format = "[─](fg:current_line)[](fg:green)[$symbol](fg:primary bg:green)[](fg:green bg:box)[ $branch](fg:foreground bg:box)"
-symbol = " "
+symbol = ""
+style = "bold fg:git"
+format = "[\\[$branch\\] ]($style)"
 
 [git_status]
-format = "[( $all_status)](fg:foreground bg:box)[](fg:box)"
+style = "fg:subtle"
+format = "[($modified$staged$untracked$renamed$deleted$conflicted$stashed$ahead_behind)]($style) "
+modified = "[M${count}](fg:warn) "
+staged = "[S${count}](fg:ok) "
+untracked = "[U${count}](fg:subtle) "
+renamed = "R${count} "
+deleted = "D${count} "
+conflicted = "C${count} "
+stashed = "T${count} "
+ahead = "A${count} "
+behind = "B${count} "
+diverged = "A${ahead_count} B${behind_count} "
+up_to_date = ""
 
-[nodejs]
-format = "[─](fg:current_line)[](fg:green)[$symbol](fg:primary bg:green)[](fg:green bg:box)[ $version](fg:foreground bg:box)[](fg:box)"
-symbol = " "
-detect_files = ["package.json", ".node-version", "!bunfig.toml", "!bun.lockb"]
-
-[bun]
-format = "[─](fg:current_line)[](fg:yellow)[$symbol](fg:primary bg:yellow)[](fg:yellow bg:box)[ $version](fg:foreground bg:box)[](fg:box)"
-symbol = "bun "
-
-[deno]
-format = "[─](fg:current_line)[](fg:cyan)[$symbol](fg:primary bg:cyan)[](fg:cyan bg:box)[ $version](fg:foreground bg:box)[](fg:box)"
-symbol = "deno "
-
-[aws]
-format = "[─](fg:current_line)[](fg:purple)[$symbol](fg:primary bg:purple)[](fg:purple bg:box)[ $profile](fg:foreground bg:box)[](fg:box)"
-symbol = "󰅟 "
-disabled = true
+[jobs]
+symbol = "▧"
+number_threshold = 1
+format = "[$symbol$number ]($style)"
+style = "fg:accent"
 
 [cmd_duration]
-min_time = 500
-format = "[─](fg:current_line)[](fg:orange)[󰔟 ](fg:primary bg:orange)[](fg:orange bg:box)[ $duration ](fg:foreground bg:box)[](fg:box)"
+min_time = 1000
+format = "[took $duration ]($style)"
+style = "fg:warn"
 
-[shell]
-format = "[─](fg:current_line)[](fg:blue)[ ](fg:primary bg:blue)[](fg:blue bg:box)[ $indicator](fg:foreground bg:box)[](fg:box)"
-disabled = false
+[character]
+success_symbol = "[>](bold fg:ok)"
+error_symbol = "[>](bold fg:err)"
+vimcmd_symbol = "[<](bold fg:accent)"
 
 [time]
 disabled = true
 
-[username]
-disabled = true
-
-[kubernetes]
-disabled = true
-
-[gcloud]
-disabled = true
-
-[azure]
-disabled = true
-
-[character]
-format = """
-[│](fg:current_line)
-[╰─$symbol](fg:current_line) """
-success_symbol = "[❯](fg:bold green)"
-error_symbol = "[❯](fg:bold red)"
+# --- palette:auto start ---
+[palettes.auto]
+foreground = '#f7f6ec'
+background = '#1d1d1d'
+current_line = '#165776'
+primary = '#343835'
+box = '#165776'
+blue = '#4c99d3'
+cyan = '#389aac'
+green = '#7bb75b'
+orange = '#77592e'
+pink = '#5f4190'
+purple = '#a57fc4'
+red = '#ce3e60'
+yellow = '#e8b32a'
+# --- palette:auto end ---
